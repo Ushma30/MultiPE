@@ -1,0 +1,10 @@
+#ifndef _CONFIGURE__HEADE_
+#define _CONFIGURE__HEADE_
+
+using uint32_t = unsigned int;
+using Data_t = int;
+
+constexpr uint32_t T = ${VECTOR_SIZE};
+constexpr uint32_t ADD_PARALLEL_VECTOR_SIZE = ${ADD_PARALLEL_VECTOR_SIZE};
+
+#endif

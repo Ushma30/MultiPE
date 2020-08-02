@@ -1,0 +1,39 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558 
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "Biuld host",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-g",
+//                "-march=native",
+//                "-O3",
+//                "-opt-prefetch",
+                "-std=c++14",
+                "-I/usr/include/",
+                "-I${workspaceFolder}/include/",
+                "-I/tools/Xilinx/Vivado/2019.2/include/",
+                "-I/tools/Xilinx/Vitis/2019.2/include/",
+                "-I/opt/xilinx/xrt/include/",
+                "-I${workspaceFolder}/hlslib/include/",
+                "${workspaceFolder}/src/VADD.cpp",
+                "${workspaceFolder}/src/Memory.cpp",
+                "${workspaceFolder}/src/Top.cpp",
+                "${workspaceFolder}/test/CPU_simulate.cpp",
+                "-o",
+                "${workspaceFolder}/build/${fileBasenameNoExtension}",
+                "-lOpenCL",
+                "-lpthread"
+            ],
+            "options": {
+                "cwd": "/usr/bin"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}
