@@ -13,7 +13,7 @@ set(MM_QUICK_BUILD OFF CACHE BOOL "Enable quick build option for Vitis.")
 set(MM_VITIS_FLAGS "" CACHE STRING "Extra flags for Vitis.")
 set(MM_VITIS_COMPILE_FLAGS "" CACHE STRING "Extra flags for Vitis compilation phase.")
 set(MM_VITIS_LINKER_FLAGS "" CACHE STRING "Extra flags for Vitis linking phase.")
-
+set(MM_MEMORY_BUS_WIDTH 64 CACHE STRING "Width of memory bus in bytes.")
 set(VECTOR_SIZE 1024 CACHE STRING "Vector size.")
 set(ADD_PARALLEL_VECTOR_SIZE 16 CACHE STRING "Parallel vector size.")
 
@@ -54,143 +54,154 @@ add_executable(CPU_simulate test/CPU_simulate.cpp)
 target_link_libraries(CPU_simulate ${Vitis_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${Vitis_LIBRARIES} mmkernel)
 add_test(CPU_simulate CPU_simulate)
 enable_testing()
-# 
-# # Synthesis flags
-# set(MM_SYNTHESIS_FLAGS "${MM_SYNTHESIS_FLAGS} -std=c++11 -O3 -DMM_SYNTHESIS -DHLSLIB_SYNTHESIS")
-# if(MM_ADD_RESOURCE)
-#   set(MM_SYNTHESIS_FLAGS "${MM_SYNTHESIS_FLAGS} -DMM_ADD_RESOURCE=${MM_ADD_RESOURCE}") 
-# endif() 
-# if(MM_MULT_RESOURCE) 
-#   set(MM_SYNTHESIS_FLAGS "${MM_SYNTHESIS_FLAGS} -DMM_MULT_RESOURCE=${MM_MULT_RESOURCE}") 
-# endif() 
-# 
-# 
-# # Hardware kernel
-# string(REPLACE " " ";" MM_VITIS_FLAGS "${MM_VITIS_FLAGS}")
-# set(MM_VITIS_COMMAND
-#   -s
-#   ${MM_VITIS_FLAGS}
-#   -I${CMAKE_SOURCE_DIR}/include
-#   -I${CMAKE_SOURCE_DIR}/hlslib/include
-#   -I${CMAKE_BINARY_DIR}
-#   --kernel ${MM_KERNEL_NAME} 
-#   --platform ${MM_DSA_NAME})
-# if(MM_ENABLE_PROFILING)
-#   set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
-#     --profile_kernel "data:all:all:all"
-#     --profile_kernel "stall:all:all"
-#     --profile_kernel "exec:all:all")
-# endif()
-# if(Vitis_IS_LEGACY)
-#   set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
-#   --xp prop:kernel.${MM_KERNEL_NAME}.kernel_flags="${MM_SYNTHESIS_FLAGS}"
-#   --max_memory_ports all)
-# else()
-#   set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
-#       --advanced.prop kernel.${MM_KERNEL_NAME}.kernel_flags="${MM_SYNTHESIS_FLAGS}")
-# endif()
-# if(MM_QUICK_BUILD)
-#   set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND} -Oquick)
-# else()
-#   set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND} -O3)
-# endif()
-# if(MM_ENABLE_DEBUGGING)
-#   set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND} -g
-#     --dk chipscope:MultiPEKernel_1:M_AXI_GMEM0
-#     --dk chipscope:MultiPEKernel_1:M_AXI_GMEM1
-#     --dk chipscope:MultiPEKernel_1:M_AXI_GMEM2)
-# endif()
-# if(MM_TARGET_CLOCK GREATER 0)
-#   set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
-#       --kernel_frequency ${MM_TARGET_CLOCK})
-# endif()
-# if(MM_TWO_DIMMS)
-#   # TODO: Newer versions of Vitis have again changed how this is done, and now
-#   # require a separate config file with the global memory mappings.
-#   if(NOT (MM_DSA_NAME MATCHES "dynamic"))
-#     set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
-#       --xp misc:map_connect=add.kernel.${MM_KERNEL_NAME}_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
-#       --xp misc:map_connect=add.kernel.${MM_KERNEL_NAME}_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
-#       --xp misc:map_connect=add.kernel.${MM_KERNEL_NAME}_1.M_AXI_GMEM2.core.OCL_REGION_0.M01_AXI)
-#   else()
-#     set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
-#       --sp ${MM_KERNEL_NAME}_1.m_axi_gmem0:bank0
-#       --sp ${MM_KERNEL_NAME}_1.m_axi_gmem1:bank1
-#       --sp ${MM_KERNEL_NAME}_1.m_axi_gmem2:bank1)
-#   endif()
-# endif()
-# 
-# if(((${Vitis_MAJOR_VERSION} LESS 2018) AND (${Vitis_MINOR_VERSION} LESS 3)) OR ${Vitis_MAJOR_VERSION} LESS 2017)
-#   add_custom_target(build_kernel
-#     COMMAND XILINX_PATH=${CMAKE_BINARY_DIR} ${Vitis_COMPILER} -t hw
-#     ${MM_VITIS_COMMAND} ${MM_VITIS_COMPILE_FLAGS} ${MM_VITIS_LINKER_FLAGS}
-#     ${MM_KERNEL_SRC} -o MultiPE_hw.xclbin) 
-# else()
-#   # Hardware emulation
-#   add_custom_command(
-#     OUTPUT ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xo
-#     COMMENT "Compiling for hardware emulation."
-#     COMMAND ${CMAKE_COMMAND} -E env
-#             XILINX_PATH=${CMAKE_BINARY_DIR}
-#             ${Vitis_COMPILER} -c -t hw_emu
-#             ${MM_VITIS_COMMAND} ${MM_VITIS_COMPILE_FLAGS} ${MM_VITIS_FLAGS}
-#             ${MM_KERNEL_SRC} -o MultiPE_hw_emu.xo
-#     DEPENDS ${MM_KERNEL_SRC})
-#   add_custom_target(compile_hardware_emulation DEPENDS
-#                     ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xo)
-#   add_custom_command(
-#     OUTPUT ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xclbin
-#     COMMENT "Linking for hardware emulation."
-#     COMMAND ${CMAKE_COMMAND} -E env
-#             XILINX_PATH=${CMAKE_BINARY_DIR}
-#             ${Vitis_COMPILER} -l -t hw_emu
-#             ${MM_VITIS_COMMAND} ${MM_VITIS_LINKER_FLAGS} ${MM_VITIS_FLAGS}
-#             MultiPE_hw_emu.xo
-#             -o MultiPE_hw_emu.xclbin
-#     DEPENDS ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xo)
-#   add_custom_command(
-#     OUTPUT ${CMAKE_BINARY_DIR}/emconfig.json
-#     COMMENT "Generating emconfig.json file for hardware emulation."
-#     COMMAND ${VITIS_ROOT_DIR}/bin/emconfigutil --platform
-#             ${MM_DSA_NAME})
-#   add_custom_target(link_hardware_emulation DEPENDS
-#                     ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xclbin
-#                     ${CMAKE_BINARY_DIR}/emconfig.json)
-#   # Hardware
-#   add_custom_command(
-#     OUTPUT ${CMAKE_BINARY_DIR}/MultiPE_hw.xo
-#     COMMENT "Compiling for hardware."
-#     COMMAND ${CMAKE_COMMAND} -E env
-#             XILINX_PATH=${CMAKE_BINARY_DIR}
-#             ${Vitis_COMPILER} -c -t hw
-#             ${MM_VITIS_COMMAND} ${MM_VITIS_COMPILE_FLAGS} ${MM_VITIS_FLAGS}
-#             ${MM_KERNEL_SRC} -o MultiPE_hw.xo
-#     DEPENDS ${MM_KERNEL_SRC})
-#   add_custom_target(compile_hardware DEPENDS
-#                     ${CMAKE_BINARY_DIR}/MultiPE_hw.xo)
-#   add_custom_command(
-#     OUTPUT ${CMAKE_BINARY_DIR}/MultiPE_hw.xclbin
-#     COMMENT "Linking for hardware (this will run the full synthesis, placement and routing flow)."
-#     COMMAND ${CMAKE_COMMAND} -E env
-#             XILINX_PATH=${CMAKE_BINARY_DIR}
-#             ${Vitis_COMPILER} -l -t hw
-#             ${MM_VITIS_COMMAND} ${MM_VITIS_LINKER_FLAGS} ${MM_VITIS_FLAGS}
-#             MultiPE_hw.xo
-#             -o MultiPE_hw.xclbin
-#     DEPENDS ${CMAKE_BINARY_DIR}/MultiPE_hw.xo)
-#   add_custom_target(link_hardware DEPENDS
-#                     ${CMAKE_BINARY_DIR}/MultiPE_hw.xclbin)
-# endif()
-# 
-# # Host code to launch kernel
-# add_executable(RunHardware.exe host/RunHardware.cpp)
-# target_link_libraries(RunHardware.exe ${Vitis_LIBRARIES} ${BLAS_LIBRARIES} mmkernel)
-# if(MM_TWO_DIMMS)
-#   target_compile_definitions(RunHardware.exe MM_TWO_DIMMS)
-# endif()
-# if(MM_DATA_TYPE STREQUAL "half")
-#   target_link_libraries(RunHardware.exe ${Vitis_FLOATING_POINT_LIBRARY})
-# endif()
-# if(MM_POWER_METER)
-#   target_link_libraries(RunHardware.exe powermeter)
-# endif()
+ 
+# Synthesis flags
+set(MM_SYNTHESIS_FLAGS "${MM_SYNTHESIS_FLAGS} -std=c++11 -O3 -DMM_SYNTHESIS -DHLSLIB_SYNTHESIS")
+if(MM_ADD_RESOURCE)
+  set(MM_SYNTHESIS_FLAGS "${MM_SYNTHESIS_FLAGS} -DMM_ADD_RESOURCE=${MM_ADD_RESOURCE}") 
+endif() 
+if(MM_MULT_RESOURCE) 
+  set(MM_SYNTHESIS_FLAGS "${MM_SYNTHESIS_FLAGS} -DMM_MULT_RESOURCE=${MM_MULT_RESOURCE}") 
+endif() 
+# Standalone synthesis target 
+set(MM_HLS_PROJECT_NAME "hls")
+string(REPLACE ";" " " MM_SRC_SYNTHESIS "${MM_KERNEL_SRC}")
+set(MM_KERNEL_NAME "MultiPE")
+configure_file(scripts/synthesis.tcl.in Synthesis.tcl)
+add_custom_target(synthesis COMMAND ${Vitis_HLS} -f Synthesis.tcl) 
+string(REPLACE " " ";" MM_SYNTHESIS_FLAGS ${MM_SYNTHESIS_FLAGS})
+ 
+# Hardware kernel
+string(REPLACE " " ";" MM_VITIS_FLAGS "${MM_VITIS_FLAGS}")
+set(MM_VITIS_COMMAND
+   -s
+   ${MM_VITIS_FLAGS}
+   -I${CMAKE_SOURCE_DIR}/include
+   -I${CMAKE_SOURCE_DIR}/hlslib/include
+   -I${CMAKE_BINARY_DIR}
+   --kernel ${MM_KERNEL_NAME} 
+   --platform ${MM_DSA_NAME})
+
+if(MM_ENABLE_PROFILING)
+  set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
+    --profile_kernel "data:all:all:all"
+    --profile_kernel "stall:all:all"
+    --profile_kernel "exec:all:all")
+endif()
+
+if(Vitis_IS_LEGACY)
+  set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
+  --xp prop:kernel.${MM_KERNEL_NAME}.kernel_flags="${MM_SYNTHESIS_FLAGS}"
+  --max_memory_ports all)
+else()
+  set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
+      --advanced.prop kernel.${MM_KERNEL_NAME}.kernel_flags="${MM_SYNTHESIS_FLAGS}")
+endif()
+
+if(MM_QUICK_BUILD)
+  set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND} -Oquick)
+else()
+  set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND} -O3)
+endif()
+
+if(MM_ENABLE_DEBUGGING)
+  set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND} -g
+    --dk chipscope:MultiPEKernel_1:M_AXI_GMEM0
+    --dk chipscope:MultiPEKernel_1:M_AXI_GMEM1
+    --dk chipscope:MultiPEKernel_1:M_AXI_GMEM2)
+endif()
+
+if(MM_TARGET_CLOCK GREATER 0)
+  set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
+    --kernel_frequency ${MM_TARGET_CLOCK})
+endif()
+if(MM_TWO_DIMMS)
+  # TODO: Newer versions of Vitis have again changed how this is done, and now
+  # require a separate config file with the global memory mappings.
+  if(NOT (MM_DSA_NAME MATCHES "dynamic"))
+    set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
+      --xp misc:map_connect=add.kernel.${MM_KERNEL_NAME}_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
+      --xp misc:map_connect=add.kernel.${MM_KERNEL_NAME}_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
+      --xp misc:map_connect=add.kernel.${MM_KERNEL_NAME}_1.M_AXI_GMEM2.core.OCL_REGION_0.M01_AXI)
+  else()
+    set(MM_VITIS_COMMAND ${MM_VITIS_COMMAND}
+      --sp ${MM_KERNEL_NAME}_1.m_axi_gmem0:bank0
+      --sp ${MM_KERNEL_NAME}_1.m_axi_gmem1:bank1
+      --sp ${MM_KERNEL_NAME}_1.m_axi_gmem2:bank1)
+  endif()
+endif()
+ 
+if(((${Vitis_MAJOR_VERSION} LESS 2018) AND (${Vitis_MINOR_VERSION} LESS 3)) OR ${Vitis_MAJOR_VERSION} LESS 2017)
+  add_custom_target(build_kernel
+    COMMAND XILINX_PATH=${CMAKE_BINARY_DIR} ${Vitis_COMPILER} -t hw
+    ${MM_VITIS_COMMAND} ${MM_VITIS_COMPILE_FLAGS} ${MM_VITIS_LINKER_FLAGS}
+    ${MM_KERNEL_SRC} -o MultiPE_hw.xclbin) 
+else()
+  # Hardware emulation
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xo
+    COMMENT "Compiling for hardware emulation."
+    COMMAND ${CMAKE_COMMAND} -E env
+            XILINX_PATH=${CMAKE_BINARY_DIR}
+            ${Vitis_COMPILER} -c -t hw_emu
+            ${MM_VITIS_COMMAND} ${MM_VITIS_COMPILE_FLAGS} ${MM_VITIS_FLAGS}
+            ${MM_KERNEL_SRC} -o MultiPE_hw_emu.xo
+    DEPENDS ${MM_KERNEL_SRC})
+  add_custom_target(compile_hardware_emulation DEPENDS
+                    ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xo)
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xclbin
+    COMMENT "Linking for hardware emulation."
+    COMMAND ${CMAKE_COMMAND} -E env
+            XILINX_PATH=${CMAKE_BINARY_DIR}
+            ${Vitis_COMPILER} -l -t hw_emu
+            ${MM_VITIS_COMMAND} ${MM_VITIS_LINKER_FLAGS} ${MM_VITIS_FLAGS}
+            MultiPE_hw_emu.xo
+            -o MultiPE_hw_emu.xclbin
+    DEPENDS ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xo)
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/emconfig.json
+    COMMENT "Generating emconfig.json file for hardware emulation."
+    COMMAND ${VITIS_ROOT_DIR}/bin/emconfigutil --platform
+            ${MM_DSA_NAME})
+  add_custom_target(link_hardware_emulation DEPENDS
+                    ${CMAKE_BINARY_DIR}/MultiPE_hw_emu.xclbin
+                    ${CMAKE_BINARY_DIR}/emconfig.json)
+  # Hardware
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/MultiPE_hw.xo
+    COMMENT "Compiling for hardware."
+    COMMAND ${CMAKE_COMMAND} -E env
+            XILINX_PATH=${CMAKE_BINARY_DIR}
+            ${Vitis_COMPILER} -c -t hw
+            ${MM_VITIS_COMMAND} ${MM_VITIS_COMPILE_FLAGS} ${MM_VITIS_FLAGS}
+            ${MM_KERNEL_SRC} -o MultiPE_hw.xo
+    DEPENDS ${MM_KERNEL_SRC})
+  add_custom_target(compile_hardware DEPENDS
+                    ${CMAKE_BINARY_DIR}/MultiPE_hw.xo)
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/MultiPE_hw.xclbin
+    COMMENT "Linking for hardware (this will run the full synthesis, placement and routing flow)."
+    COMMAND ${CMAKE_COMMAND} -E env
+            XILINX_PATH=${CMAKE_BINARY_DIR}
+            ${Vitis_COMPILER} -l -t hw
+            ${MM_VITIS_COMMAND} ${MM_VITIS_LINKER_FLAGS} ${MM_VITIS_FLAGS}
+            MultiPE_hw.xo
+            -o MultiPE_hw.xclbin
+    DEPENDS ${CMAKE_BINARY_DIR}/MultiPE_hw.xo)
+  add_custom_target(link_hardware DEPENDS
+                    ${CMAKE_BINARY_DIR}/MultiPE_hw.xclbin)
+endif()
+ 
+# Host code to launch kernel
+add_executable(MultiPE.exe host/main.cpp)
+target_link_libraries(MultiPE.exe ${Vitis_LIBRARIES} ${BLAS_LIBRARIES} mmkernel)
+if(MM_TWO_DIMMS)
+  target_compile_definitions(MultiPE.exe MM_TWO_DIMMS)
+endif()
+if(MM_DATA_TYPE STREQUAL "half")
+  target_link_libraries(MultiPE.exe ${Vitis_FLOATING_POINT_LIBRARY})
+endif()
+if(MM_POWER_METER)
+  target_link_libraries(MultiPE.exe powermeter)
+endif()

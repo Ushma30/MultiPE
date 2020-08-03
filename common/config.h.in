@@ -6,5 +6,6 @@ using Data_t = int;
 
 constexpr uint32_t T = ${VECTOR_SIZE};
 constexpr uint32_t ADD_PARALLEL_VECTOR_SIZE = ${ADD_PARALLEL_VECTOR_SIZE};
+constexpr int kMemoryWidthBytes = ${MM_MEMORY_BUS_WIDTH};
 
 #endif

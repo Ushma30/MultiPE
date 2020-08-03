@@ -27,10 +27,6 @@ void Compute_VADD(Stream<MemoryPack_t> &A, Stream<MemoryPack_t> &B, Stream<Memor
 
 void VADD(Stream<MemoryPack_t> &A, MemoryPack_t const B[], Stream<MemoryPack_t> &C)
 {
-#pragma HLS INTERFACE m_axi port = B bundle = gmem1 offset = slave
-#pragma HLS INTERFACE s_axilite port = B
-#pragma HLS INTERFACE s_axilite port = return
-
 #pragma HLS DATAFLOW
 
     Stream<MemoryPack_t> add_pipe[1];

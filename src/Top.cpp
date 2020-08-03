@@ -6,9 +6,9 @@ void MultiPE(MemoryPack_t const a[], MemoryPack_t const b[], MemoryPack_t c[])
 {
 #pragma HLS INTERFACE m_axi port = a bundle = gmem0 offset = slave
 #pragma HLS INTERFACE m_axi port = b bundle = gmem1 offset = slave
-#pragma HLS INTERFACE m_axi port = c bundle = gmem1 offset = slave
-#pragma HLS INTERFACE s_axilite port = in
-#pragma HLS INTERFACE s_axilite port = out
+#pragma HLS INTERFACE m_axi port = c bundle = gmem2 offset = slave
+#pragma HLS INTERFACE s_axilite port = a
+#pragma HLS INTERFACE s_axilite port = b
 #pragma HLS INTERFACE s_axilite port = c
 #pragma HLS INTERFACE s_axilite port = return
 
